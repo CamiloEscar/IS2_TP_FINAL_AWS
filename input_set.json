@@ -1,1 +1,12 @@
-{"UUID": "CPU-TEST-001", "action": "set", "id": "UADER-FCyT-IS2", "cp": "3260", "CUIT": "30-70925411-8", "domicilio": "25 de Mayo 385-1P", "localidad": "Concepci\u00f3n del Uruguay", "provincia": "Entre Rios", "telefono": "03442 43-1442", "web": "http://www.uader.edu.ar"}
+{
+  "UUID": "CPU-TEST-001",
+  "ACTION": "set",
+  "id": "UADER-FCyT-IS2",
+  "cp": "3260",
+  "CUIT": "30-70925411-8",
+  "domicilio": "25 de Mayo 385-1P",
+  "localidad": "Concepci\u00f3n del Uruguay",
+  "provincia": "Entre Rios",
+  "telefono": "03442 43-1442",
+  "web": "http://www.uader.edu.ar"
+}

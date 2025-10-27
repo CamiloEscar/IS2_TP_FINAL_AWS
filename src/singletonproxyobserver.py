@@ -138,16 +138,35 @@ class CorporateLogSingleton(metaclass=SingletonMeta):
         logging.info("CorporateLogSingleton inicializado")
 
     def log_action(self, uuid_client, action, record_id=None):
+        """
+        Registra una acción en CorporateLog.
+        Usa el UUID del cliente como clave primaria y guarda el historial en una lista.
+        """
         try:
             timestamp = datetime.datetime.now().isoformat()
-            log_id = str(uuid.uuid4())
             
-            entry = {
-                'log_id': log_id,
-                'uuid': str(uuid_client),
+            # Obtener log existente del cliente
+            try:
+                response = self.table.get_item(Key={'id': str(uuid_client)})
+                existing_log = response.get('Item', {})
+                history = existing_log.get('history', [])
+            except:
+                history = []
+            
+            # Agregar nueva entrada al historial
+            history.append({
                 'action': str(action),
                 'timestamp': timestamp,
                 'record_id': str(record_id) if record_id else 'N/A'
+            })
+            
+            # Guardar log actualizado
+            entry = {
+                'id': str(uuid_client),
+                'last_action': str(action),
+                'last_timestamp': timestamp,
+                'last_record_id': str(record_id) if record_id else 'N/A',
+                'history': history
             }
             
             self.table.put_item(Item=entry)
@@ -247,38 +266,7 @@ class ProxyServer:
 
             logging.info(f"Acción recibida: {action} desde {addr}")
 
-            # --- Manejo de acciones ---
-            if action == "subscribe":
-                self.observer.add_subscriber(conn, addr)
-                response = {"status": "subscribed", "message": "Suscripcion exitosa"}
-                conn.sendall(json.dumps(response).encode('utf-8'))
-                # Escuchar pasivamente para detectar desconexión
-                try:
-                    while True:
-                        # Si el cliente cierra la conexión, recv() devuelve vacío
-                        ping = conn.recv(1)
-                        if not ping:
-                            logging.info(f"Suscriptor {addr} se desconectó.")
-                            break
-                except Exception as e:
-                    logging.debug(f"Fin de conexión con {addr}: {e}")
-                finally:
-                    self.observer.remove_subscriber(conn)
-                    conn.close()
-                return
-
-            elif action == "get":
-                item_id = request.get("id") or request.get("ID")
-                self.log.log_action(uuid_client, action, item_id)
-                result = self.data.get_item(item_id)
-                conn.sendall(json.dumps(result, default=str).encode('utf-8'))
-
-            elif action == "list":
-                self.log.log_action(uuid_client, action)
-                result = self.data.list_items()
-                conn.sendall(json.dumps(result, default=str).encode('utf-8'))
-
-            elif action == "set":
+            if action == "set":
                 data_to_save = {k: v for k, v in request.items() 
                                if k.upper() not in ["UUID", "ACTION"]}
                 
@@ -303,7 +291,47 @@ class ProxyServer:
                 if "Error" not in result:
                     self.observer.notify_all(result)
                     logging.info(f"Observadores notificados del cambio en id: {data_to_save.get('id')}")
+            
+            elif action == "get":
+                item_id = request.get("id") or request.get("ID")
+                self.log.log_action(uuid_client, action, item_id)
+                result = self.data.get_item(item_id)
+                conn.sendall(json.dumps(result, default=str).encode('utf-8'))
 
+            # --- Manejo de acciones ---
+            elif action == "subscribe":
+                record_id = request.get("id") or request.get("ID")
+                # Registrar la acción con id
+                self.log.log_action(uuid_client, action, record_id)
+                logging.info(f"Log registrado: {action} por {uuid_client}")
+                
+                self.observer.add_subscriber(conn, addr)
+                response = {"status": "subscribed", "message": "Suscripcion exitosa"}
+                conn.sendall(json.dumps(response).encode('utf-8'))
+
+                # Escuchar pasivamente para detectar desconexión
+                try:
+                    while True:
+                        ping = conn.recv(1)
+                        if not ping:
+                            logging.info(f"Suscriptor {addr} se desconectó.")
+                            break
+                except Exception as e:
+                    logging.debug(f"Fin de conexión con {addr}: {e}")
+                finally:
+                    self.observer.remove_subscriber(conn)
+                    conn.close()
+                return
+
+
+            
+
+            elif action == "list":
+                self.log.log_action(uuid_client, action)
+                result = self.data.list_items()
+                conn.sendall(json.dumps(result, default=str).encode('utf-8'))
+
+            
             else:
                 error_msg = {"Error": f"Accion no reconocida: {action}"}
                 logging.warning(error_msg["Error"])
