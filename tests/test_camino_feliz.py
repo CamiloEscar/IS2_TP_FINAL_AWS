@@ -108,7 +108,7 @@ def test_happy_path_all_actions():
         # --- Verificar log SET en DynamoDB ---
         row = wait_for_log(input_set["UUID"], "set", log_table)
         assert row is not None, "No se registró la acción SET en CorporateLog"
-        print(f"[TEST] ✓ Log SET registrado correctamente")
+        print(f"[TEST] Log SET registrado correctamente")
         print(f"[TEST] Detalles: {json.dumps(row, indent=2, default=str)}")
 
         # --- ACCIÓN GET ---
@@ -127,7 +127,7 @@ def test_happy_path_all_actions():
         # --- Verificar log GET en DynamoDB ---
         row = wait_for_log(input_set["UUID"], "get", log_table)
         assert row is not None, "No se registró la acción GET en CorporateLog"
-        print(f"[TEST] ✓ Log GET registrado correctamente")
+        print(f"[TEST] Log GET registrado correctamente")
 
         # --- ACCIÓN SUBSCRIBE ---
         print("\n[TEST] === PRUEBA SUBSCRIBE ===")
@@ -144,9 +144,9 @@ def test_happy_path_all_actions():
         # --- Verificar log SUBSCRIBE en DynamoDB ---
         row = wait_for_log(input_set["UUID"], "subscribe", log_table)
         assert row is not None, "No se registró la acción SUBSCRIBE en CorporateLog"
-        print(f"[TEST] ✓ Log SUBSCRIBE registrado correctamente")
+        print(f"[TEST] Log SUBSCRIBE registrado correctamente")
         
-        print("\n[TEST] ✓✓✓ TODOS LOS TESTS PASARON ✓✓✓")
+        print("\n[TEST] TODOS LOS TESTS PASARON")
 
     finally:
         print("\n[TEST] Cerrando servidor...")

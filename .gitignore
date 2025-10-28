@@ -1,16 +1,19 @@
-# Entorno virtual
+# === ENTORNOS VIRTUALES ===
 venv/
 
-# archivos
-demo.py
-IS2_TPFI_credentials.json
-IS2_TPFI_insert.py
-IS2_TPFI_test.py
-prueba.py
+# === ARCHIVOS DE PRUEBA ===
+test/
+test_TPFI.py
 
-# archivos .pyc
+# === ARCHIVOS DE CREDENCIALES / CLAVES ===
+config.py
+IS2_TPFI_credentials.json
+
+# === ARCHIVOS DE SALIDA (JSON) ===
+src/output_*.json
+src/out_*.json
+src/actualizaciones.json
+
+# === ARCHIVOS COMPILADOS DE PYTHON ===
 __pycache__/
 *.pyc
-
-#archivo con clave
-config.py
