@@ -32,7 +32,7 @@ def test_double_server_start():
         
         # La segunda instancia debe fallar
         assert "Address already in use" in stderr or server2.returncode != 0, \
-            f"El segundo servidor no falló como se esperaba. STDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+            f"El segundo servidor no fallo como se esperaba. STDOUT:\n{stdout}\nSTDERR:\n{stderr}"
 
     finally:
         # Terminar servidores

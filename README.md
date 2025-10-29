@@ -2,7 +2,7 @@
 
 ## Sistema Singleton-Proxy-Observer con AWS DynamoDB
 
-Sistema de gestión de datos corporativos implementando patrones de diseño Singleton, Proxy y Observer con AWS DynamoDB.
+Sistema de gestion de datos corporativos implementando patrones de diseño Singleton, Proxy y Observer con AWS DynamoDB.
 
 ## Componentes
 
@@ -10,14 +10,14 @@ Sistema de gestión de datos corporativos implementando patrones de diseño Sing
 
 Servidor principal que maneja las conexiones y operaciones con DynamoDB.
 
-**Características:**
+**Caracteristicas:**
 
-- Patrón Singleton para acceso a tablas DynamoDB
-- Patrón Proxy para intermediar solicitudes
-- Patrón Observer para notificaciones en tiempo real
+- Patron Singleton para acceso a tablas DynamoDB
+- Patron Proxy para intermediar solicitudes
+- Patron Observer para notificaciones en tiempo real
 - Thread-safe con locks para operaciones concurrentes
-- Validación robusta de datos antes de insertar en DynamoDB
-- Conversión automática de tipos para compatibilidad con DynamoDB
+- Validacion robusta de datos antes de insertar en DynamoDB
+- Conversion automática de tipos para compatibilidad con DynamoDB
 
 ### 2. singletonclient.py
 
@@ -57,7 +57,7 @@ python observerclient.py -o updates.log -v
 
 ### 4. test_TPFI.py
 
-Script de diagnóstico para verificar la conexión con DynamoDB.
+Script de diagnostico para verificar la conexion con DynamoDB.
 
 **Uso:**
 \`\`\`bash
@@ -75,7 +75,7 @@ python test_TPFI.py
   "cp": "3260",
   "CUIT": "30-70925411-8",
   "domicilio": "25 de Mayo 385-1P",
-  "localidad": "Concepción del Uruguay",
+  "localidad": "Concepcion del Uruguay",
   "provincia": "Entre Rios",
   "sede": "FCyT",
   "telefono": "03442 43-1442",
@@ -104,4 +104,4 @@ aws dynamodb describe-table --table-name CorporateData --region us-east-1
 - boto3
 - Credenciales AWS configuradas en `~/.aws/credentials`
 - Tabla `CorporateData` en DynamoDB con clave primaria `id` (String)
-- Tabla `CorporateLog` en DynamoDB para auditoría
+- Tabla `CorporateLog` en DynamoDB para auditoria

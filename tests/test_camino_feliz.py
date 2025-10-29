@@ -26,7 +26,7 @@ def monitor_process_output(process, prefix="[SERVER]"):
 # --- Espera hasta que el registro aparezca en DynamoDB ---
 def wait_for_log(uuid, action, table, timeout=15):
     """
-    Busca un log por UUID del cliente y verifica la última acción.
+    Busca un log por UUID del cliente y verifica la última accion.
     """
     start = time.time()
     attempt = 0
@@ -45,9 +45,9 @@ def wait_for_log(uuid, action, table, timeout=15):
                 else:
                     print(f"[DEBUG] No existe log para UUID={uuid}")
             
-            # Verificar si la última acción coincide
+            # Verificar si la última accion coincide
             if item and item.get('last_action') == action:
-                print(f"[DEBUG] ✓ Log encontrado en intento {attempt}")
+                print(f"[DEBUG] Log encontrado en intento {attempt}")
                 return item
                 
         except Exception as e:
@@ -55,7 +55,7 @@ def wait_for_log(uuid, action, table, timeout=15):
             
         time.sleep(0.5)
     
-    print(f"[DEBUG] ✗ No se encontró log después de {attempt} intentos")
+    print(f"[DEBUG] No se encontro log después de {attempt} intentos")
     return None
 
 def test_happy_path_all_actions():
@@ -66,7 +66,7 @@ def test_happy_path_all_actions():
     OUT_GET_PATH = os.path.join(BASE_DIR, "out_get.json")
     INPUT_SUB_PATH = os.path.join(BASE_DIR, "input_sub.json")
 
-    # --- Conexión a DynamoDB ---
+    # --- Conexion a DynamoDB ---
     dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
     log_table = dynamodb.Table('CorporateLog')
 
@@ -87,31 +87,31 @@ def test_happy_path_all_actions():
     time.sleep(3)  # Aumentado a 3 segundos para dar más tiempo
 
     try:
-        # --- ACCIÓN SET ---
+        # --- ACCIoN SET ---
         print("\n[TEST] === PRUEBA SET ===")
         with open(INPUT_SET_PATH) as f:
             input_set = json.load(f)
         
         print(f"[TEST] UUID a usar: {input_set['UUID']}")
-        print(f"[TEST] Acción: SET")
+        print(f"[TEST] Accion: SET")
 
         subprocess.run(
             ["python", "singletonclient.py", f"-i={INPUT_SET_PATH}", f"-o={OUT_SET_PATH}", "-v"],
             cwd=BASE_DIR,
             check=True
         )
-        assert os.path.exists(OUT_SET_PATH), "El archivo de salida SET no se generó"
+        assert os.path.exists(OUT_SET_PATH), "El archivo de salida SET no se genero"
         
         print("[TEST] Esperando registro en DynamoDB...")
         time.sleep(1)  # Dar un segundo extra antes de buscar
 
         # --- Verificar log SET en DynamoDB ---
         row = wait_for_log(input_set["UUID"], "set", log_table)
-        assert row is not None, "No se registró la acción SET en CorporateLog"
+        assert row is not None, "No se registro la accion SET en CorporateLog"
         print(f"[TEST] Log SET registrado correctamente")
         print(f"[TEST] Detalles: {json.dumps(row, indent=2, default=str)}")
 
-        # --- ACCIÓN GET ---
+        # --- ACCIoN GET ---
         print("\n[TEST] === PRUEBA GET ===")
         input_get = {"UUID": input_set["UUID"], "ACTION": "get", "id": input_set["id"]}
         with open(INPUT_GET_PATH, "w") as f:
@@ -122,14 +122,14 @@ def test_happy_path_all_actions():
             cwd=BASE_DIR,
             check=True
         )
-        assert os.path.exists(OUT_GET_PATH), "El archivo de salida GET no se generó"
+        assert os.path.exists(OUT_GET_PATH), "El archivo de salida GET no se genero"
 
         # --- Verificar log GET en DynamoDB ---
         row = wait_for_log(input_set["UUID"], "get", log_table)
-        assert row is not None, "No se registró la acción GET en CorporateLog"
+        assert row is not None, "No se registro la accion GET en CorporateLog"
         print(f"[TEST] Log GET registrado correctamente")
 
-        # --- ACCIÓN SUBSCRIBE ---
+        # --- ACCIoN SUBSCRIBE ---
         print("\n[TEST] === PRUEBA SUBSCRIBE ===")
         input_sub = {"UUID": input_set["UUID"], "ACTION": "subscribe", "id": input_set["id"]}
         with open(INPUT_SUB_PATH, "w") as f:
@@ -143,7 +143,7 @@ def test_happy_path_all_actions():
 
         # --- Verificar log SUBSCRIBE en DynamoDB ---
         row = wait_for_log(input_set["UUID"], "subscribe", log_table)
-        assert row is not None, "No se registró la acción SUBSCRIBE en CorporateLog"
+        assert row is not None, "No se registro la accion SUBSCRIBE en CorporateLog"
         print(f"[TEST] Log SUBSCRIBE registrado correctamente")
         
         print("\n[TEST] TODOS LOS TESTS PASARON")

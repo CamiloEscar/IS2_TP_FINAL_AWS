@@ -11,9 +11,9 @@ def is_server_running(host="localhost", port=8000):
     except OSError:
         return False
 
-@pytest.mark.skipif(is_server_running(), reason="El servidor está activo; este test requiere que esté caído.")
+@pytest.mark.skipif(is_server_running(), reason="El servidor está activo; este test requiere que esté caido.")
 def test_server_unavailable(tmp_path):
-    """Verifica que el cliente maneje correctamente la falta de conexión al servidor."""
+    """Verifica que el cliente maneje correctamente la falta de conexion al servidor."""
 
     # Crear archivo de entrada temporal
     input_data = {
@@ -34,10 +34,10 @@ def test_server_unavailable(tmp_path):
     )
 
     # Debe retornar error
-    assert result.returncode != 0, "El cliente debería devolver código de error si el servidor no está disponible."
+    assert result.returncode != 0, "El cliente deberia devolver codigo de error si el servidor no está disponible."
 
     # Combinar stdout y stderr y verificar mensaje de error
     output = (result.stdout + result.stderr).lower()
     assert "error" in output or "connection" in output, (
-        f"Se esperaba un mensaje de error de conexión, pero se obtuvo:\n{output}"
+        f"Se esperaba un mensaje de error de conexion, pero se obtuvo:\n{output}"
     )

@@ -1,8 +1,8 @@
 # ============================================
 # Programa: singletonclient.py
 # Autor: Camilo Escar
-# Versión: 1.0
-# Descripción: Cliente para acciones get/set/list
+# Version: 1.0
+# Descripcion: Cliente para acciones get/set/list
 #              hacia el servidor singletonproxyobserver.py
 # ============================================
 
@@ -14,11 +14,11 @@ import logging
 from pathlib import Path
 
 # --------------------------------------------
-# CONFIGURACIÓN
+# CONFIGURACIoN
 # --------------------------------------------
 HOST = "localhost"
 PORT = 8080
-BUFFER_SIZE = 4096
+BUFFER_TAM = 4096
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -26,12 +26,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 # --------------------------------------------
 # FUNCIONES AUXILIARES
 # --------------------------------------------
-def send_request(action_data, host, port):
-    """Envía un JSON al servidor y recibe respuesta."""
+def envio_request(action_data, host, port):
+    """Envia un JSON al servidor y recibe respuesta."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
         s.sendall(json.dumps(action_data).encode('utf-8'))
-        data = s.recv(BUFFER_SIZE)
+        data = s.recv(BUFFER_TAM)
     return data.decode('utf-8')
 
 
@@ -64,9 +64,13 @@ def main():
     # Agregar UUID si no está
     if "UUID" not in data:
         data["UUID"] = str(uuid.getnode())
+        
+    if "ACTION" not in data or not str(data["ACTION"]).strip():
+        logging.error("El campo 'ACTION' es obligatorio en el JSON de entrada.")
+        exit(1)  #  Devolver código de error distinto de cero ya que falta el campo ACTION
 
     logging.info(f"Enviando accion: {data.get('ACTION')} al servidor {args.server}:{args.port}")
-    response = send_request(data, args.server, args.port)
+    response = envio_request(data, args.server, args.port)
 
     # Mostrar o guardar salida
     if args.output:
