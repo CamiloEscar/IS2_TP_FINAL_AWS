@@ -5,7 +5,6 @@
 # Materia: Ingenieria de Software II - UADER-FCyT
 # Descripcion: Servidor TCP con patrones Singleton, Proxy y Observer
 #              para gestionar CorporateData y CorporateLog en AWS DynamoDB
-#              NUEVO: Acción LISTLOG para listar registros de auditoría
 # ============================================
 
 import socket
