@@ -1,10 +1,11 @@
 # ============================================
 # Programa: singletonproxyobserver.py
-# Version: 1.3
+# Version: 1.0
 # Autor: Camilo Escar
 # Materia: Ingenieria de Software II - UADER-FCyT
 # Descripcion: Servidor TCP con patrones Singleton, Proxy y Observer
 #              para gestionar CorporateData y CorporateLog en AWS DynamoDB
+#              NUEVO: Acción LISTLOG para listar registros de auditoría
 # ============================================
 
 import socket
@@ -139,6 +140,33 @@ class CorporateLog(metaclass=SingletonMeta):
         except Exception as e:
             logging.error(f"Error al registrar log: {e}")
 
+    def get_log(self, client_uuid):
+        """Obtiene el log completo de un cliente específico."""
+        if not client_uuid:
+            return {"Error": "UUID no puede estar vacio"}
+        try:
+            logging.debug(f"Obteniendo log para UUID={client_uuid}")
+            response = self.table.get_item(Key={'id': str(client_uuid)})
+            return response.get('Item', {"Error": "Log no encontrado para este UUID"})
+        except ClientError as e:
+            logging.error(f"Error en get_log: {e}")
+            return {"Error": str(e)}
+
+    def list_logs(self):
+        """Lista todos los registros de auditoría."""
+        try:
+            logging.debug("Listando todos los logs de CorporateLog")
+            response = self.table.scan()
+            items = response.get('Items', [])
+            
+            # Ordenar por último timestamp (más reciente primero)
+            items.sort(key=lambda x: x.get('last_timestamp', ''), reverse=True)
+            
+            return items
+        except ClientError as e:
+            logging.error(f"Error en list_logs: {e}")
+            return {"Error": str(e)}
+
 
 # ===========================================================
 # OBSERVER MANAGER
@@ -175,7 +203,7 @@ class ObserverSuscriptor:
 # SERVIDOR (PROXY)
 # ===========================================================
 class ServidorProxy:
-    """Servidor TCP con manejo de acciones (SET, GET, LIST, SUBSCRIBE)."""
+    """Servidor TCP con manejo de acciones (SET, GET, LIST, LISTLOG, GETLOG, SUBSCRIBE)."""
     def __init__(self, host=HOST, port=PORT):
         self.host = host
         self.port = port
@@ -184,7 +212,15 @@ class ServidorProxy:
         self.observer = ObserverSuscriptor()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind((self.host, self.port))
+        try:
+            self.sock.bind((self.host, self.port))
+        except OSError as e:
+            if e.errno == 98: 
+                logging.error(f"El servidor ya está en ejecución en {self.host}:{self.port}")
+                print(f"\n[ERROR] Ya hay un servidor corriendo en {self.host}:{self.port}\n")
+                exit(1)
+            else:
+                raise
         self.sock.listen(5)
         logging.info(f"Servidor escuchando en {self.host}:{self.port}")
 
@@ -223,6 +259,10 @@ class ServidorProxy:
                 self._accion_get(conn, request, uuid_client)
             elif action == "list":
                 self._accion_list(conn, uuid_client)
+            elif action == "listlog":
+                self._accion_listlog(conn, uuid_client)
+            elif action == "getlog":
+                self._accion_getlog(conn, request, uuid_client)
             elif action == "subscribe":
                 self._accion_subscribe(conn, addr, request, uuid_client)
             else:
@@ -262,12 +302,29 @@ class ServidorProxy:
         result = self.data.list_items()
         self._enviar_json(conn, result)
 
+    def _accion_listlog(self, conn, uuid_client):
+        """Lista todos los registros de auditoría."""
+        self.log.registro(uuid_client, "listlog")
+        result = self.log.list_logs()
+        self._enviar_json(conn, result)
+
+    def _accion_getlog(self, conn, req, uuid_client):
+        """Obtiene el log de un UUID específico."""
+        target_uuid = req.get("target_uuid") or req.get("TARGET_UUID")
+        if not target_uuid:
+            self._enviar_json(conn, {"Error": "Se requiere 'target_uuid' para obtener un log específico"})
+            return
+        
+        self.log.registro(uuid_client, "getlog", target_uuid)
+        result = self.log.get_log(target_uuid)
+        self._enviar_json(conn, result)
+
     def _accion_subscribe(self, conn, addr, req, uuid_client):
         self.log.registro(uuid_client, "subscribe", req.get("id"))
         self.observer.agregar_suscriptor(conn, addr)
         self._enviar_json(conn, {"status": "subscribed", "message": "Suscripcion exitosa"})
         try:
-            while conn.recv(1):  # Escucha pasivamente hasta desconexion
+            while conn.recv(1):
                 pass
         except Exception:
             logging.info(f"Cliente suscrito {addr} desconectado.")

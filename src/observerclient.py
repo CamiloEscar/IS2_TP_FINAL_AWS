@@ -1,6 +1,6 @@
 # ============================================
-# Programa: observerclient.py (version mejorada)
-# Autor: Camilo Escar / Ajustado por GPT-5
+# Programa: observerclient.py
+# Autor: Camilo Escar
 # Version: 1.1
 # Descripcion: Cliente observador con reconexion controlada
 # ============================================

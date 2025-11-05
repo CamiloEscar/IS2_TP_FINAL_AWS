@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interfaz de Pruebas Servidor TCP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #0a0e27;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #0f1429 100%);
+            padding: 20px 40px;
+            border-bottom: 2px solid #00ff88;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            color: #00ff88;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .header-info {
+            color: #6b7280;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .connection-panel {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-indicator.disconnected {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .status-indicator.disconnected .status-dot {
+            background: #ff4444;
+            animation: none;
+        }
+
+        .config-bar {
+            display: grid;
+            grid-template-columns: 2fr 2fr 3fr 1fr;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 10px;
+            color: #6b7280;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #2a2f4a;
+            color: #e0e0e0;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-family: 'Consolas', monospace;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .operations-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .operations-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .operation-card {
+            background: linear-gradient(135deg, #1a1f3a 0%, #0f1429 100%);
+            border: 1px solid #2a2f4a;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .operation-card:hover {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+        }
+
+        .operation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2a2f4a;
+        }
+
+        .operation-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00ff88;
+            letter-spacing: 2px;
+        }
+
+        .operation-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .inputs-section {
+            flex-shrink: 0;
+        }
+
+        .response-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .response-section .field {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .response-section .output-area {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
+
+        .actions-section {
+            flex-shrink: 0;
+            padding-top: 12px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .field label {
+            font-size: 10px;
+            color: #6b7280;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .field input,
+        .field textarea {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #2a2f4a;
+            color: #e0e0e0;
+            padding: 10px;
+            font-size: 12px;
+            font-family: 'Consolas', monospace;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .field textarea {
+            flex: 1;
+            resize: none;
+            height: 100px;
+        }
+
+        .field input:focus,
+        .field textarea:focus {
+            outline: none;
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Consolas', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: auto;
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #00ff88;
+            color: #0a0e27;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #00cc6a;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn-secondary {
+            background: #4a90e2;
+            color: #fff;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #357abd;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.4);
+        }
+
+        .btn-tertiary {
+            background: #f39c12;
+            color: #0a0e27;
+        }
+
+        .btn-tertiary:hover:not(:disabled) {
+            background: #e67e22;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .output-area {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2f4a;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            color: #a0a0a0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .log-panel {
+            flex: 1;
+            background: linear-gradient(135deg, #1a1f3a 0%, #0f1429 100%);
+            border: 1px solid #2a2f4a;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2a2f4a;
+        }
+
+        .log-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00ff88;
+            letter-spacing: 2px;
+        }
+
+        .btn-clear {
+            padding: 8px 16px;
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+            font-size: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .btn-clear:hover {
+            background: rgba(255, 68, 68, 0.3);
+        }
+
+        .log-content {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2f4a;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(42, 47, 74, 0.3);
+            color: #a0a0a0;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry.success {
+            color: #00ff88;
+        }
+
+        .log-entry.error {
+            color: #ff4444;
+        }
+
+        .log-entry .timestamp {
+            color: #4a5568;
+            margin-right: 10px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 255, 136, 0.2);
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2f4a;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1>Interfaz de Pruebas Servidor TCP</h1>
+                    <div class="header-info">UADER-FCyT | Ingeniería de Software II | Integración AWS DynamoDB</div>
+                </div>
+                <div class="connection-panel">
+                    <div class="status-indicator disconnected" id="connectionStatus">
+                        <div class="status-dot"></div>
+                        <span>VERIFICANDO CONEXIÓN</span>
+                    </div>
+                </div>
+            </div>
+            <div class="config-bar">
+                <div class="input-group">
+                    <label>Endpoint del Proxy</label>
+                    <input type="text" id="proxyUrl" value="http://localhost:5000">
+                </div>
+                <div class="input-group">
+                    <label>UUID del Cliente</label>
+                    <input type="text" id="clientUUID" value="CAMILO">
+                </div>
+                <div></div>
+                <button class="btn btn-primary" onclick="testConnection()">PROBAR</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="operations-panel">
+                <div class="operations-grid">
+                    <!-- SET -->
+                    <div class="operation-card">
+                        <div class="operation-header">
+                            <span class="operation-title">SET</span>
+                        </div>
+                        <div class="operation-body">
+                            <div class="inputs-section">
+                                <div class="field">
+                                    <label>ID del Registro</label>
+                                    <input type="text" id="setId" value="UADER-FCyT-IS2">
+                                </div>
+                                <div class="field">
+                                    <label>Datos JSON</label>
+                                    <textarea id="setData">{
+                                    "localidad": "Concepción del Uruguay",
+                                    "provincia": "Entre Rios",
+                                    "cp": "3260",
+                                    "web": "http://www.uader.edu.ar",
+                                    "CUIT": "30-70925411-8",
+                                    "telefono": "03442 43-1442",
+                                    "domicilio": "25 de Mayo 385-1P"
+                                    }</textarea>
+                                </div>
+                            </div>
+                            <div class="actions-section">
+                                <button class="btn btn-primary" onclick="testSet()" id="btnSet">EJECUTAR SET</button>
+                            </div>
+                            <div class="response-section">
+                                <div class="field">
+                                    <label>Respuesta</label>
+                                    <div class="output-area" id="setResponse">Esperando operación...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GET -->
+                    <div class="operation-card">
+                        <div class="operation-header">
+                            <span class="operation-title">GET</span>
+                        </div>
+                        <div class="operation-body">
+                            <div class="inputs-section">
+                                <div class="field">
+                                    <label>ID del Registro</label>
+                                    <input type="text" id="getId" value="UADER-FCyT-IS2">
+                                </div>
+                            </div>
+                            <div class="actions-section">
+                                <button class="btn btn-secondary" onclick="testGet()" id="btnGet">EJECUTAR GET</button>
+                            </div>
+                            <div class="response-section">
+                                <div class="field">
+                                    <label>Respuesta</label>
+                                    <div class="output-area" id="getResponse">Esperando operación...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIST -->
+                    <div class="operation-card">
+                        <div class="operation-header">
+                            <span class="operation-title">LIST</span>
+                        </div>
+                        <div class="operation-body">
+                            <div class="inputs-section">
+                                <div class="field">
+                                    <label>Descripción</label>
+                                    <div style="color: #6b7280; font-size: 11px; padding: 10px 0;">
+                                        Obtiene todos los registros de la tabla CorporateData en DynamoDB
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="actions-section">
+                                <button class="btn btn-tertiary" onclick="testList()" id="btnList">EJECUTAR LIST</button>
+                            </div>
+                            <div class="response-section">
+                                <div class="field">
+                                    <label>Respuesta</label>
+                                    <div class="output-area" id="listResponse">Esperando operación...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <div class="log-header">
+                    <span class="log-title">REGISTRO DE ACTIVIDAD</span>
+                    <button class="btn-clear" onclick="clearLog()">LIMPIAR</button>
+                </div>
+                <div class="log-content" id="activityLog">
+                    <div class="log-entry">
+                        <span class="timestamp">[INICIO]</span> Sistema inicializado. Esperando prueba de conexión...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getTimestamp() {
+            return new Date().toLocaleTimeString('es-AR', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+        }
+
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="timestamp">[${getTimestamp()}]</span> ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('activityLog').innerHTML = 
+                '<div class="log-entry"><span class="timestamp">[' + getTimestamp() + ']</span> Registro limpiado.</div>';
+        }
+
+        function setButtonLoading(btnId, loading) {
+            const btn = document.getElementById(btnId);
+            const originalText = btn.textContent;
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = originalText + '<span class="spinner"></span>';
+            } else {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function sendRequest(data) {
+            const proxyUrl = document.getElementById('proxyUrl').value;
+            const response = await fetch(`${proxyUrl}/api/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        async function testConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = 'status-indicator';
+            statusEl.innerHTML = '<div class="status-dot"></div><span>VERIFICANDO...</span>';
+            
+            try {
+                const proxyUrl = document.getElementById('proxyUrl').value;
+                const response = await fetch(`${proxyUrl}/health`, { method: 'GET' });
+                
+                if (response.ok) {
+                    statusEl.className = 'status-indicator';
+                    statusEl.innerHTML = '<div class="status-dot"></div><span>CONECTADO</span>';
+                    addLog('Conexión establecida con el proxy HTTP', 'success');
+                } else {
+                    throw new Error('Proxy no responde');
+                }
+            } catch (error) {
+                statusEl.className = 'status-indicator disconnected';
+                statusEl.innerHTML = '<div class="status-dot"></div><span>DESCONECTADO</span>';
+                addLog(`Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSet() {
+            const id = document.getElementById('setId').value;
+            const dataText = document.getElementById('setData').value;
+            const uuid = document.getElementById('clientUUID').value;
+            const responseDiv = document.getElementById('setResponse');
+
+            setButtonLoading('btnSet', true);
+
+            try {
+                const data = JSON.parse(dataText);
+                data.id = id;
+                data.UUID = uuid;
+                data.ACTION = "set";
+
+                addLog(`Ejecutando operación SET para id="${id}"`, 'info');
+                responseDiv.textContent = 'Enviando datos al servidor TCP vía proxy...';
+
+                const result = await sendRequest(data);
+
+                if (result.Error) {
+                    responseDiv.textContent = 'ERROR:\n\n' + JSON.stringify(result, null, 2);
+                    addLog(`SET falló: ${result.Error}`, 'error');
+                } else {
+                    responseDiv.textContent = 'ÉXITO - Datos guardados en DynamoDB:\n\n' + 
+                        JSON.stringify(result, null, 2);
+                    addLog(`SET completado exitosamente para id="${id}"`, 'success');
+                }
+
+            } catch (e) {
+                responseDiv.textContent = 'ERROR:\n' + e.message;
+                addLog(`Error en SET: ${e.message}`, 'error');
+            } finally {
+                setButtonLoading('btnSet', false);
+            }
+        }
+
+        async function testGet() {
+            const id = document.getElementById('getId').value;
+            const uuid = document.getElementById('clientUUID').value;
+            const responseDiv = document.getElementById('getResponse');
+
+            setButtonLoading('btnGet', true);
+
+            try {
+                const data = {
+                    ACTION: "get",
+                    UUID: uuid,
+                    id: id
+                };
+
+                addLog(`Ejecutando operación GET para id="${id}"`, 'info');
+                responseDiv.textContent = 'Consultando DynamoDB...';
+
+                const result = await sendRequest(data);
+
+                if (result.Error) {
+                    responseDiv.textContent = 'ERROR:\n\n' + JSON.stringify(result, null, 2);
+                    addLog(`GET falló: ${result.Error}`, 'error');
+                } else {
+                    responseDiv.textContent = 'Registro encontrado:\n\n' + 
+                        JSON.stringify(result, null, 2);
+                    addLog(`GET completado para id="${id}"`, 'success');
+                }
+
+            } catch (e) {
+                responseDiv.textContent = 'ERROR:\n' + e.message;
+                addLog(`Error en GET: ${e.message}`, 'error');
+            } finally {
+                setButtonLoading('btnGet', false);
+            }
+        }
+
+        async function testList() {
+            const uuid = document.getElementById('clientUUID').value;
+            const responseDiv = document.getElementById('listResponse');
+
+            setButtonLoading('btnList', true);
+
+            try {
+                const data = {
+                    ACTION: "list",
+                    UUID: uuid
+                };
+
+                addLog(`Ejecutando operación LIST`, 'info');
+                responseDiv.textContent = 'Obteniendo todos los registros de DynamoDB...';
+
+                const result = await sendRequest(data);
+
+                if (result.Error) {
+                    responseDiv.textContent = 'ERROR:\n\n' + JSON.stringify(result, null, 2);
+                    addLog(`LIST falló: ${result.Error}`, 'error');
+                } else {
+                    const count = Array.isArray(result) ? result.length : 0;
+                    responseDiv.textContent = `${count} registros encontrados:\n\n` + 
+                        JSON.stringify(result, null, 2);
+                    addLog(`LIST completado: ${count} registros obtenidos`, 'success');
+                }
+
+            } catch (e) {
+                responseDiv.textContent = 'ERROR:\n' + e.message;
+                addLog(`Error en LIST: ${e.message}`, 'error');
+            } finally {
+                setButtonLoading('btnList', false);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            addLog('Web interface loaded', 'success');
+            addLog('Verifying proxy connection...', 'info');
+            testConnection();
+        });
+    </script>
+</body>
+</html>
