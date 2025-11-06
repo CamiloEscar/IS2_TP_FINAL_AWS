@@ -1,10 +1,15 @@
 # ============================================
 # Programa: singletonproxyobserver.py
-# Version: 1.0
+# Version: 1.5
 # Autor: Camilo Escar
 # Materia: Ingenieria de Software II - UADER-FCyT
 # Descripcion: Servidor TCP con patrones Singleton, Proxy y Observer
 #              para gestionar CorporateData y CorporateLog en AWS DynamoDB
+#              NUEVO: 
+#              - Acción LISTLOG para listar registros de auditoría
+#              - Acción GETLOG para obtener log de un UUID específico
+#              - SUBSCRIBE ahora devuelve UUID, session_id, action y timestamp
+#              - Todas las acciones guardan el request completo en el log
 # ============================================
 
 import socket
@@ -112,7 +117,7 @@ class CorporateLog(metaclass=SingletonMeta):
         self.table = boto3.resource('dynamodb', region_name='us-east-1').Table('CorporateLog')
         logging.info("Singleton CorporateLog inicializado")
 
-    def registro(self, client_uuid, action, record_id=None):
+    def registro(self, client_uuid, action, record_id=None, extra_info=None):
         """Registra una accion en CorporateLog."""
         timestamp = datetime.datetime.now().isoformat()
         try:
@@ -120,11 +125,17 @@ class CorporateLog(metaclass=SingletonMeta):
             existing = response.get('Item', {})
             history = existing.get('history', [])
 
-            history.append({
+            log_entry = {
                 "action": str(action),
                 "timestamp": timestamp,
                 "record_id": str(record_id) if record_id else "N/A"
-            })
+            }
+            
+            # Agregar información extra si existe (para subscribe, etc.)
+            if extra_info:
+                log_entry["extra"] = extra_info
+
+            history.append(log_entry)
 
             entry = {
                 "id": str(client_uuid),
@@ -133,6 +144,9 @@ class CorporateLog(metaclass=SingletonMeta):
                 "last_record_id": str(record_id) if record_id else "N/A",
                 "history": history
             }
+            
+            if extra_info:
+                entry["last_extra"] = extra_info
 
             self.table.put_item(Item=entry)
             logging.info(f"Log registrado: {action} por {client_uuid}")
@@ -284,7 +298,14 @@ class ServidorProxy:
     # ------------------------------------
     def _accion_set(self, conn, req, uuid_client):
         data = {k: v for k, v in req.items() if k.upper() not in ["UUID", "ACTION"]}
-        self.log.registro(uuid_client, "set", data.get("id"))
+        
+        # Registrar con el request completo Y los datos que se van a guardar
+        extra_info = {
+            "request_data": {k: v for k, v in req.items()},
+            "message_content": data  # El contenido del mensaje de negocio
+        }
+        self.log.registro(uuid_client, "set", data.get("id"), extra_info)
+        
         result = self.data.set_item(data)
         self._enviar_json(conn, result)
         if "Error" not in result:
@@ -292,11 +313,16 @@ class ServidorProxy:
 
     def _accion_get(self, conn, req, uuid_client):
         item_id = req.get("id") or req.get("ID")
-        self.log.registro(uuid_client, "get", item_id)
+        
+        # Registrar con el request completo
+        extra_info = {"request_data": {k: v for k, v in req.items()}}
+        self.log.registro(uuid_client, "get", item_id, extra_info)
+        
         result = self.data.get_item(item_id)
         self._enviar_json(conn, result)
 
     def _accion_list(self, conn, uuid_client):
+        # No hay request data adicional en list
         self.log.registro(uuid_client, "list")
         result = self.data.list_items()
         self._enviar_json(conn, result)
@@ -314,19 +340,52 @@ class ServidorProxy:
             self._enviar_json(conn, {"Error": "Se requiere 'target_uuid' para obtener un log específico"})
             return
         
-        self.log.registro(uuid_client, "getlog", target_uuid)
+        # Registrar con el request completo
+        extra_info = {"request_data": {k: v for k, v in req.items()}}
+        self.log.registro(uuid_client, "getlog", target_uuid, extra_info)
+        
         result = self.log.get_log(target_uuid)
         self._enviar_json(conn, result)
 
     def _accion_subscribe(self, conn, addr, req, uuid_client):
-        self.log.registro(uuid_client, "subscribe", req.get("id"))
+        # Generar ID de sesión único
+        session_id = str(uuid4())
+        timestamp = datetime.datetime.now().isoformat()
+        
+        # Información extra para el log (incluye el request completo)
+        extra_info = {
+            "session_id": session_id,
+            "client_address": f"{addr[0]}:{addr[1]}",
+            "server_address": f"{self.host}:{self.port}",
+            "request_data": {k: v for k, v in req.items()}  # Mensaje completo enviado
+        }
+        
+        # Registrar en log de auditoría con información de sesión
+        self.log.registro(uuid_client, "subscribe", req.get("id"), extra_info)
+        
+        # Agregar suscriptor
         self.observer.agregar_suscriptor(conn, addr)
-        self._enviar_json(conn, {"status": "subscribed", "message": "Suscripcion exitosa"})
+        
+        # Enviar respuesta detallada al cliente
+        response = {
+            "status": "subscribed",
+            "message": "Suscripcion exitosa",
+            "uuid": uuid_client,
+            "session_id": session_id,
+            "action": "subscribe",
+            "timestamp": timestamp,
+            "server_address": f"{self.host}:{self.port}",
+            "client_address": f"{addr[0]}:{addr[1]}"
+        }
+        
+        self._enviar_json(conn, response)
+        logging.info(f"Suscripción confirmada: UUID={uuid_client}, Session={session_id}")
+        
         try:
             while conn.recv(1):
                 pass
         except Exception:
-            logging.info(f"Cliente suscrito {addr} desconectado.")
+            logging.info(f"Cliente suscrito {addr} (UUID={uuid_client}, Session={session_id}) desconectado.")
         finally:
             self.observer.remover_suscriptor(conn)
 
